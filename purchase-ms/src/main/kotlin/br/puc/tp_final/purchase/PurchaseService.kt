@@ -1,5 +1,4 @@
 package br.puc.tp_final.purchase
-
 import org.springframework.stereotype.Service
 import java.util.*
 import br.puc.tp_final.purchase.model.Product;
@@ -13,37 +12,36 @@ class PurchaseService {
 
     val log: Logger = LoggerFactory.getLogger(PurchaseService::class.java)
 
-    fun buy(product: Product): Response {
-        log.info("Inicio do processo de compra")
+  	constructor() {}
 
+    // Consulta microserviços de Estoque e Pagamento para confirmar transação
+    @Throws(PurchaseException::class)
+    suspend fun buy(shoppingCart: List<Product>): UUID {
+        val uuid = UUID.randomUUID()
         try {
-            PublishRabbit()
-
-            if (ValidateStock()) {
-                log.info("Estoque validado com sucesso id ", product.id)
-
-                if (ValidatePay()) {
-                    log.info("Pagamento validado com sucesso id ", product.id)
-                    return Response(StatusRetorno.Success.value() , "Compra confirmada", UUID.randomUUID())
-                } else {
-                    log.info("Erro ao validar pagamento id ", product.id)
-
-                   return  Response(StatusRetorno.ClientError.value() , "Pagamento", UUID.randomUUID())
-                }
-            } else {
-                log.info("Erro ao validar estoque id ", product.id)
-                return Response(StatusRetorno.ServerError.value() , "Estoque", UUID.randomUUID())
-            }
-        } catch (ex: Exception) {
-            log.info("Erro: ", ex.message)
-            return Response(StatusRetorno.ClientError.value() , "Pagamento", UUID.randomUUID())
+            validateStock(uuid, shoppingCart)
+            validatePayment(uuid, shoppingCart)
+            return uuid
+        } catch (e: Exception) {
+            throw e
         }
     }
 
-    fun ValidateStock(): Boolean = true
+    // Publica mensagem na fila do serviço de Estoque e aguarda resposta sincronamente
+    private suspend fun validateStock(uuid: UUID, shoppingCart: List<Product>) {
+        log.info("Vai verificar estoque")
+        val message = MessageQueue.Message(uuid, shoppingCart)
+        val result = MessageQueue.publishSync(MessageQueue.Queue.STOCK, message)
+        if (!result) throw PurchaseException("Estoque insuficiente")
+        log.info("Estoque disponível")
+    }
 
-    fun PublishRabbit(): Boolean = true
-
-    fun ValidatePay(): Boolean = true
-
+    // Publica mensagem na fila do serviço de Pagamento e aguarda resposta sincronamente
+    private suspend fun validatePayment(uuid: UUID, shoppingCart: List<Product>) {
+        log.info("Vai confirmar pagamento")
+        val message = MessageQueue.Message(uuid, shoppingCart)
+        val result = MessageQueue.publishSync(MessageQueue.Queue.PAYMENT, message)
+        if (!result) throw PurchaseException("Pagamento recusado")
+        log.info("Pagamento autorizado")
+    }
 }

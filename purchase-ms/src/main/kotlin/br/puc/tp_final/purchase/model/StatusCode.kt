@@ -1,6 +1,7 @@
 package br.puc.tp_final.purchase.model
+import java.util.*
 
-enum class StatusRetorno {
+enum class StatusCode {
     Success {
         override fun value() = 200
     },

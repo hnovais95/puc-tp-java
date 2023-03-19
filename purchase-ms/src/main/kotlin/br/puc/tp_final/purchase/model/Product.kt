@@ -1,3 +1,5 @@
 package br.puc.tp_final.purchase.model
-data class Product(var id: Int?, var name: String)
+import java.util.*
+
+data class Product(val id: Int, val name: String, val value: Int)
 

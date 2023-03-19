@@ -1,0 +1,20 @@
+package br.puc.tp_final.purchase.model
+import java.util.*
+
+object MessageQueue {
+    fun publishSync(queue: Queue, message: Message): Boolean {
+        println("Mensagem publicada na fila ${queue.rawValue}.")
+        // Para o caso de simular falha em alguma etapa
+        return when (queue) {
+            Queue.STOCK -> true
+            Queue.PAYMENT -> false
+        }
+    }
+
+    enum class Queue(val rawValue: String) {
+        STOCK("Estoque"),
+        PAYMENT("Pagamento")
+    }
+
+    data class Message(val uuid: UUID, val metadata: List<Product>)
+}
